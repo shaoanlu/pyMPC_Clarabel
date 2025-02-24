@@ -15,22 +15,11 @@ pyMPC requires the following packages:
 * matplotlib
 
 ## Installation
-
-### Stable version from PyPI
-
-Run the command 
-
-```
-pip install python-mpc
-```
-This will install the [stable version](https://pypi.org/project/python-mpc/0.1.1/) of pyMPC from the PyPI package repository.
-
-### Latest version from GitHub
 1. Get a local copy the pyMPC project. For instance, run 
 ```
-git clone https://github.com/forgi86/pyMPC.git
+git clone https://github.com/shaoanlu/pyMPC_Clarabel.git
 ```
-in a terminal to clone the project using git. Alternatively, download the zipped pyMPC project from [this link](https://github.com/forgi86/pyMPC/zipball/master) and extract it in a local folder
+in a terminal to clone the project using git.
 
 2. Install pyMPC by running
 ```
