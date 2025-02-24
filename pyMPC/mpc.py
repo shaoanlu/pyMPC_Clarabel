@@ -1,7 +1,7 @@
 import numpy as np
 import scipy as sp
 import scipy.sparse as sparse
-import osqp
+import clarabel
 import warnings
 
 
@@ -238,7 +238,7 @@ class MPCController:
         self.COMPUTE_J_CNST = False  # Compute the constant term of the MPC QP problem
 
         # QP problem instance
-        self.prob = osqp.OSQP()
+        self.prob = None
 
         # Variables initialized by the setup() method
         self.res = None
@@ -263,7 +263,18 @@ class MPCController:
         self.x0_rh = np.copy(self.x0)
         self.uminus1_rh = np.copy(self.uminus1)
         self._compute_QP_matrices_()
-        self.prob.setup(self.P, self.q, self.A, self.l, self.u, warm_start=True, verbose=False, eps_abs=self.eps_rel, eps_rel=self.eps_abs)
+
+        aug_A = sparse.vstack([self.A, -1 * self.A])
+        aug_u = np.concatenate([self.u, -self.l])
+
+        if self.prob is None:
+            cones = [clarabel.NonnegativeConeT(aug_u.shape[0])]
+            settings = clarabel.DefaultSettings()
+            settings.presolve_enable = False
+            settings.verbose = False
+            self.prob = clarabel.DefaultSolver(self.P, self.q, aug_A, aug_u, cones, settings)
+        else:
+            self.prob.update(q=self.q, P=self.P, A=aug_A, b=aug_u)
 
         if solve:
             self.solve()
@@ -298,30 +309,33 @@ class MPCController:
         nu = self.nu
 
         # Extract first control input to the plant
-        if self.res.info.status == 'solved':
-            uMPC = self.res.x[(Np+1)*nx:(Np+1)*nx + nu]
+        res_x = np.array(self.res.x)
+        if not self.res.status == clarabel.SolverStatus.PrimalInfeasible:
+            uMPC = res_x[(Np+1)*nx:(Np+1)*nx + nu]
+        # if self.res.info.status == 'solved':
+        #     uMPC = self.res.x[(Np+1)*nx:(Np+1)*nx + nu]
         else:
             uMPC = self.u_failure
 
         # Return additional info?
         info = {}
         if return_x_seq:
-            seq_X = self.res.x[0:(Np+1)*nx]
+            seq_X = res_x[0:(Np+1)*nx]
             seq_X = seq_X.reshape(-1,nx)
             info['x_seq'] = seq_X
 
         if return_u_seq:
-            seq_U = self.res.x[(Np+1)*nx:(Np+1)*nx + Nc*nu]
+            seq_U = res_x[(Np+1)*nx:(Np+1)*nx + Nc*nu]
             seq_U = seq_U.reshape(-1,nu)
             info['u_seq'] = seq_U
 
         if return_eps_seq:
-            seq_eps = self.res.x[(Np+1)*nx + Nc*nu : (Np+1)*nx + Nc*nu + (Np+1)*nx ]
+            seq_eps = res_x[(Np+1)*nx + Nc*nu : (Np+1)*nx + Nc*nu + (Np+1)*nx ]
             seq_eps = seq_eps.reshape(-1,nx)
             info['eps_seq'] = seq_eps
 
-        if return_status:
-            info['status'] = self.res.info.status
+        # if return_status:
+        #     info['status'] = self.res.info.status
 
         if return_obj_val:
             obj_val = self.res.info.obj_val + self.J_CNST # constant of the objective value
@@ -367,12 +381,6 @@ class MPCController:
         """ Solve the QP problem. """
 
         self.res = self.prob.solve()
-
-        # Check solver status
-        if self.res.info.status != 'solved':
-            warnings.warn('OSQP did not solve the problem!')
-            if self.raise_error:
-                raise ValueError('OSQP did not solve the problem!')
 
     def __controller_function__(self, x, u, xref=None):
         """ This function is meant to be used for debug only.
@@ -451,7 +459,10 @@ class MPCController:
         else:
             self.q = np.hstack([q_X, q_U])
 
-        self.prob.update(l=self.l, u=self.u, q=self.q)
+        aug_u = np.concatenate([self.u, -self.l])
+        # aug_A = sparse.vstack([self.A, -1*self.A])
+        # self.prob.update(q=self.q, b=aug_u, P=self.P, A=aug_A)
+        self.prob.update(q=self.q, b=aug_u)
 
     def _compute_QP_matrices_(self):
         Np = self.Np
