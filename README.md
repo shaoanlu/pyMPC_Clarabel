@@ -40,15 +40,17 @@ Detailed instructions for the Raspberry PI platform are available [here](README_
 
 This code snippets illustrates the use of the MPCController class:
 
-```
+```python
 from pyMPC.mpc import MPCController
 
-K = MPCController(Ad,Bd,Np=20, x0=x0,xref=xref,uminus1=uminus1,
-                  Qx=Qx, QxN=QxN, Qu=Qu,QDu=QDu,
-                  xmin=xmin,xmax=xmax,umin=umin,umax=umax,Dumin=Dumin,Dumax=Dumax)
+K = MPCController(
+    Ad,Bd,Np=20, x0=x0,xref=xref,uminus1=uminus1,
+    Qx=Qx, QxN=QxN, Qu=Qu,QDu=QDu,
+    xmin=xmin,xmax=xmax,umin=umin,umax=umax,Dumin=Dumin,Dumax=Dumax,
+    qp_backend="osqp",  # 'osqp', 'proxqp', or 'clarabel'
+)
 K.setup()
-
-...
+```
 
 xstep = x0
 for i in range(nsim): 
