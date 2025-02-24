@@ -11,7 +11,7 @@ where
 pyMPC requires the following packages:
 * numpy
 * scipy
-* [OSQP](https://osqp.org/)
+* [Clarabel]([https://osqp.org/](https://github.com/oxfordcontrol/Clarabel.rs/tree/main))
 * matplotlib
 
 ## Installation
