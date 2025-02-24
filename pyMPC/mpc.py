@@ -265,16 +265,16 @@ class MPCController:
         self._compute_QP_matrices_()
 
         aug_A = sparse.vstack([self.A, -1 * self.A])
-        aug_u = np.concatenate([self.u, -self.l])
+        self.aug_u = np.concatenate([self.u, -self.l])
 
         if self.prob is None:
-            cones = [clarabel.NonnegativeConeT(aug_u.shape[0])]
+            cones = [clarabel.NonnegativeConeT(self.aug_u.shape[0])]
             settings = clarabel.DefaultSettings()
             settings.presolve_enable = False
             settings.verbose = False
-            self.prob = clarabel.DefaultSolver(self.P, self.q, aug_A, aug_u, cones, settings)
+            self.prob = clarabel.DefaultSolver(self.P, self.q, aug_A, self.aug_u, cones, settings)
         else:
-            self.prob.update(q=self.q, P=self.P, A=aug_A, b=aug_u)
+            self.prob.update(q=self.q, P=self.P, A=aug_A, b=self.aug_u)
 
         if solve:
             self.solve()
@@ -459,10 +459,9 @@ class MPCController:
         else:
             self.q = np.hstack([q_X, q_U])
 
-        aug_u = np.concatenate([self.u, -self.l])
-        # aug_A = sparse.vstack([self.A, -1*self.A])
-        # self.prob.update(q=self.q, b=aug_u, P=self.P, A=aug_A)
-        self.prob.update(q=self.q, b=aug_u)
+        self.aug_u[:self.u.shape[0]] = self.u
+        self.aug_u[-self.l.shape[0]:] = -self.l
+        self.prob.update(q=self.q, b=self.aug_u)
 
     def _compute_QP_matrices_(self):
         Np = self.Np
